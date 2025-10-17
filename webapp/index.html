@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Tag‑Up Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Daily Tag‑Up Dashboard</h1>
+    </header>
+
+    <main>
+        <div class="container">
+            <section class="form-section">
+                <h2>Daily Tag‑Up Form</h2>
+                <form id="tagup-form">
+                    <label>Name:
+                        <select id="name" required>
+                            <option value="">Select user</option>
+                            <option value="Chase Cole">Chase Cole</option>
+                            <option value="Weston Bragg">Weston Bragg</option>
+                            <option value="Brian Burrer">Brian Burrer</option>
+                            <option value="Gavin Lassater">Gavin Lassater</option>
+                            <option value="Holocom">Holocom</option>
+                        </select>
+                    </label>
+                    <label>Work Date:
+                        <input type="date" id="workdate" required>
+                    </label>
+                    <label>Project DO:
+                        <input type="text" id="projectdo">
+                    </label>
+                    <label>Building:
+                        <input type="text" id="building">
+                    </label>
+                    <label>Yesterday:
+                        <textarea id="yesterday" rows="2"></textarea>
+                    </label>
+                    <label>Today:
+                        <textarea id="today" rows="2"></textarea>
+                    </label>
+                    <label>Blockers:
+                        <textarea id="blockers" rows="2"></textarea>
+                    </label>
+                    <button type="submit">Save Tag‑Up</button>
+                </form>
+            </section>
+
+            <section class="tasks-section">
+                <h2>Tasks Board</h2>
+                <div class="add-task">
+                    <input type="text" id="task-input" placeholder="New task description">
+                    <select id="task-assignee">
+                        <option value="">Assign to</option>
+                        <option value="Chase Cole">Chase Cole</option>
+                        <option value="Weston Bragg">Weston Bragg</option>
+                        <option value="Brian Burrer">Brian Burrer</option>
+                        <option value="Gavin Lassater">Gavin Lassater</option>
+                        <option value="Holocom">Holocom</option>
+                    </select>
+                    <button id="add-task-btn" type="button">Add Task</button>
+                </div>
+
+                <div class="board">
+                    <div class="column" id="todo-column" data-status="todo">
+                        <h3>To Do</h3>
+                        <div class="task-list" id="todo-list"></div>
+                    </div>
+                    <div class="column" id="inprogress-column" data-status="in-progress">
+                        <h3>In Progress</h3>
+                        <div class="task-list" id="in-progress-list"></div>
+                    </div>
+                    <div class="column" id="done-column" data-status="done">
+                        <h3>Done</h3>
+                        <div class="task-list" id="done-list"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
