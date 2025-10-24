@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Daily Tag‑Up Dashboard — Classic UI + New Tag‑Up</title>
+<style>
+  :root{--bg:#0b0f1a;--panel:#0f172a;--panel2:#111827;--ink:#e5e7eb;--muted:#9ca3af;--b1:#0b3b6e;--b2:#10b4cf;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--line:#1f2937}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  header{background:linear-gradient(90deg,var(--b1),var(--b2));padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+  .title{font-weight:700}
+  .status{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25)}
+  .status.ready{background:rgba(16,185,129,.25);border-color:rgba(16,185,129,.45)}
+  .toolbar{display:flex;gap:8px;align-items:center}
+  .btn{appearance:none;border:1px solid #2b3a58;background:#0d1426;color:var(--ink);padding:8px 10px;border-radius:10px;cursor:pointer}
+  .btn:hover{border-color:#3b82f6}
+  input[type=file]{display:none}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #2b3a58;background:#0b162a;font-size:12px}
+
+  .app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px)}
+  aside{background:linear-gradient(180deg,#0c1222,#0a0f1b);border-right:1px solid var(--line);padding:14px}
+  .nav{display:flex;flex-direction:column;gap:8px}
+  .nav button{border:1px solid var(--line);background:linear-gradient(180deg,#0f172a,#0b1222);color:var(--ink);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer}
+  .nav button.active{border-color:#3b82f6;box-shadow:inset 0 0 0 1px rgba(59,130,246,.35)}
+  .note{color:var(--muted);font-size:12px;margin-top:8px}
+
+  main{padding:16px}
+  .view{display:none;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+  .view.active{display:block}
+
+  /* Cards / grids */
+  .grid{display:grid;gap:12px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .card{background:#0f172a;border:1px solid #233048;border-radius:12px;padding:12px}
+  .card h3{margin:0 0 8px;color:#cbd5e1;font-size:14px}
+  .stat{display:flex;gap:8px;align-items:baseline}.stat .v{font-size:26px;font-weight:800}
+  .ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}
+  .grid-table{width:100%;border-collapse:collapse}
+  .grid-table th,.grid-table td{border:1px solid #2b3a58;padding:8px 10px;vertical-align:top}
+  .grid-table th{background:#0c162c;color:#d1d5db}
+
+  /* Backlog / Kanban */
+  .lanes{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  .lane{background:#0b1222;border:1px solid #1f2937;border-radius:12px;padding:10px;min-height:220px}
+  .lane-header{display:flex;justify-content:space-between;color:#9ca3af;font-size:12px;margin-bottom:6px}
+  .kcard{background:#0f172a;border:1px solid #2b3a58;border-radius:10px;padding:8px}
+  .tag{padding:2px 6px;border-radius:999px;border:1px solid #334155;background:#0b162a;font-size:11px}
+
+  /* Calendar */
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;color:#9ca3af;font-size:12px}
+  .cal-cell{min-height:100px;background:#0a1224;border:1px solid #1e2b46;border-radius:10px;padding:6px}
+  .event{display:inline-flex;gap:6px;align-items:center;padding:3px 6px;border-radius:999px;border:1px solid #334155;background:#0b162a;font-size:11px;cursor:grab}
+  .event .dot{width:8px;height:8px;border-radius:999px;background:#60a5fa}
+
+  /* Form fields */
+  .row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:10px}
+  .row .col-2{grid-column:span 2}.row .col-3{grid-column:span 3}.row .col-6{grid-column:span 6}
+  input[type=text],input[type=date],textarea,select{width:100%;padding:8px 10px;border-radius:10px;border:1px solid #2a3856;background:#0b1222;color:var(--ink)}
+  textarea{min-height:96px;resize:vertical}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;background:#0b1222;border:1px solid #2a3856;border-radius:10px;padding:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">Daily Tag‑Up Dashboard</div>
+  <div class="toolbar">
+    <button class="btn" id="btnExport">Export JSON</button>
+    <label class="btn">Import JSON <input type="file" id="fileImport" accept="application/json"></label>
+    <div id="statusBadge" class="status" role="status" aria-live="polite">loading…</div>
+  </div>
+</header>
+<div class="app">
+  <aside>
+    <div class="nav" id="nav">
+      <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="backlog">Backlog</button>
+      <button data-view="tagup">Daily Tag‑Up</button>
+      <button data-view="calendar">Calendar</button>
+      <button data-view="team">Team Dashboard</button>
+      <button data-view="config">Config</button>
+    </div>
+    <div class="note">If buttons don’t click, Unblock the file (Properties → Unblock) or PowerShell:
+      <div class="mono">Unblock-File -Path ".\index.html"</div>
+    </div>
+  </aside>
+  <main>
+    <!-- DASHBOARD (classic look) -->
+    <section id="view-dashboard" class="view active">
+      <div class="card" style="margin-bottom:10px">
+        <strong>Testing Reminder:</strong> This build still needs full team testing. Each person must complete the <em>Config</em> tab and select the synced SharePoint folder: <strong>01 SCRUM</strong>.
+      </div>
+      <div class="grid g4">
+        <div class="card"><h3>Tasks In Progress</h3><div class="stat"><div class="v" id="statInProg">0</div><div class="note">incl. Review</div></div></div>
+        <div class="card"><h3>Milestones Due (7d)</h3><div class="stat"><div class="v" id="statDue">0</div></div></div>
+        <div class="card"><h3>Pending Tag‑Ups</h3><div class="stat"><div class="v" id="statTagups">0/0</div></div></div>
+        <div class="card"><h3>Open Risks</h3><div class="stat"><div class="v" id="statRisks">0</div></div></div>
+      </div>
+      <div class="grid g2" style="margin-top:12px">
+        <div class="card">
+          <h3>Tag‑Up Snapshot (Today)</h3>
+          <div style="overflow:auto"><table class="grid-table" id="dashTagTable"><thead><tr><th>Member</th><th>Status</th><th>Yesterday</th><th>Today</th><th>Blockers</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <h3>Upcoming (10 days)</h3>
+          <ul id="dashUpcoming" style="margin:0;padding-left:18px"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- BACKLOG / KANBAN (trimmed but functional) -->
+    <section id="view-backlog" class="view">
+      <div class="row">
+        <div class="col-3"><input type="text" id="searchInput" placeholder="Search title/site/building"></div>
+        <div class="col-3">
+          <select id="sortSelect">
+            <option value="priority">Sort: priority</option>
+            <option value="due">Sort: due date</option>
+            <option value="title">Sort: title</option>
+          </select>
+        </div>
+      </div>
+      <div class="lanes" id="kanban"></div>
+    </section>
+
+    <!-- NEW DAILY TAG‑UP FLOW -->
+    <section id="view-tagup" class="view">
+      <div class="row">
+        <div class="col-2"><label>Date<input type="date" id="tagDate"></label></div>
+        <div class="col-2"><label>Mode<select id="modeSelect"><option value="team">Team summary</option><option value="person">Per‑person</option></select></label></div>
+        <div class="col-2" id="personWrap" style="display:none"><label>Person<select id="personSelect"></select></label></div>
+        <div class="col-3"><label>TO<input id="toInput" placeholder="comma-separated emails"></label></div>
+        <div class="col-3"><label>CC<input id="ccInput" placeholder="comma-separated emails"></label></div>
+      </div>
+      <div class="row"><div class="col-6"><label>1) Yesterday<textarea id="yesterdayArea"></textarea></label></div></div>
+      <div class="row"><div class="col-6"><label>2) Today<textarea id="todayArea"></textarea></label></div></div>
+      <div class="row"><div class="col-6"><label>3) Blockers<textarea id="blockersArea"></textarea></label></div></div>
+      <div class="row"><div class="col-6"><span class="chip" id="folderChip">Folder: (not set)</span></div></div>
+      <div class="row"><div class="col-6">
+        <button class="btn" id="btnAutofill">Auto‑fill</button>
+        <button class="btn" id="btnSaveDraft">Save Draft</button>
+        <button class="btn" id="btnBuildEmail">Build Preview</button>
+        <button class="btn" id="btnDownloadTxt">Download .txt</button>
+        <button class="btn" id="btnSubmitFolder">Submit to Shared Folder</button>
+        <button class="btn" id="btnEnsureDay">Ensure Today Subfolder</button>
+      </div></div>
+      <h3 style="margin:10px 0 6px">Generated</h3>
+      <div class="mono" id="emailPreview"></div>
+    </section>
+
+    <!-- CALENDAR (light) -->
+    <section id="view-calendar" class="view">
+      <div class="cal-header">
+        <div><button class="btn" id="calPrev">◀ Prev</button> <button class="btn" id="calToday">Today</button> <button class="btn" id="calNext">Next ▶</button></div>
+        <strong id="calTitle"></strong>
+      </div>
+      <div class="cal-weekdays"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+      <div class="cal-grid" id="calGrid"></div>
+    </section>
+
+    <!-- TEAM DASHBOARD (reads daily JSONs) -->
+    <section id="view-team" class="view">
+      <div class="row"><div class="col-6">
+        <button class="btn" id="btnPickFolder">Set/Change Shared Folder</button>
+        <button class="btn" id="btnRefreshFolder">Refresh Submissions</button>
+        <label class="btn">Load JSONs (fallback) <input type="file" id="multiJson" accept="application/json" multiple></label>
+      </div></div>
+      <div class="row"><div class="col-6"><span class="chip" id="teamFolderChip">Folder: (not set)</span></div></div>
+      <div style="overflow:auto"><table class="grid-table" id="teamTable"><thead><tr><th>Member</th><th>Yesterday</th><th>Today</th><th>Blockers</th><th>Date</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <!-- CONFIG (per‑user) -->
+    <section id="view-config" class="view">
+      <div class="card" style="margin-bottom:10px"><strong>Required:</strong> Choose the synced SharePoint folder <code>01 SCRUM</code>. This is the shared hub for tag‑ups.</div>
+      <div class="row">
+        <div class="col-3"><label>Your Display Name<input id="cfgDisplayName" placeholder="e.g., Weston Bragg"></label></div>
+        <div class="col-3"><label>Your Short ID<input id="cfgShortId" placeholder="e.g., WBragg"></label></div>
+      </div>
+      <div class="row"><div class="col-6">
+        <button class="btn" id="cfgPickFolder">Choose Shared Folder (pick <strong>01 SCRUM</strong>)</button>
+        <span class="chip" id="cfgFolderName">(none)</span>
+      </div></div>
+      <div class="row"><div class="col-6"><button class="btn" id="cfgSave">Save Config</button> <span class="chip" id="cfgSaved" style="display:none">Saved</span></div></div>
+      <p class="note">Folder permission persists locally (IndexedDB). If the browser clears site data, reselect the folder once.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+'use strict';
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    const status = document.getElementById('statusBadge');
+    const byId = (id)=>document.getElementById(id);
+    const esc = (s)=> (s||'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    const z2=(n)=>String(n).padStart(2,'0');
+    const fmt=(d)=>d.getFullYear()+"-"+z2(d.getMonth()+1)+"-"+z2(d.getDate());
+    const todayISO=fmt(new Date());
+
+    // ===== Storage keys
+    const DS_KEY='DT_CLASSIC_DS';
+    const CFG_KEY='DT_CLASSIC_CFG';
+    const TAG_KEY='DT_CLASSIC_TAGUPS';
+    const RISK_KEY='DT_RISKS';
+
+    // ===== Base state
+    const state={members:[
+      {id:'m_wb',name:'Weston Bragg'},
+      {id:'m_bb',name:'Brian Burrer'},
+      {id:'m_cc',name:'Chase Cole'},
+      {id:'m_gl',name:'Gavin Lasater'},
+      {id:'m_hc',name:'Holocom (Subcontractor)'}
+    ], tasks:[]};
+
+    function loadLS(k,def){ try{ return JSON.parse(localStorage.getItem(k)||def);}catch(_){return JSON.parse(def);} }
+    function saveLS(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ /* ignore */ } }
+    (function hydrate(){ const raw=loadLS(DS_KEY,'{}'); if(raw.members) state.members=raw.members; if(raw.tasks) state.tasks=raw.tasks; })();
+    const cfg = loadLS(CFG_KEY,'{}')||{}; // displayName, shortId
+
+    // ===== Navigation + delegated click safety =====
+    const views={dashboard:byId('view-dashboard'),backlog:byId('view-backlog'),tagup:byId('view-tagup'),calendar:byId('view-calendar'),team:byId('view-team'),config:byId('view-config')};
+    document.getElementById('nav').addEventListener('click',(e)=>{ const b=e.target.closest&&e.target.closest('button[data-view]'); if(!b) return; const key=b.dataset.view; for(const k in views){ views[k].classList.toggle('active',k===key);} document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x===b)); if(key==='team') refreshFolder(); if(key==='config') hydrateConfigUI(); if(key==='calendar') renderCalendar(); if(key==='dashboard') refreshDashboard(); });
+    document.addEventListener('click',(e)=>{ /* fallback delegation hook if needed */ });
+
+    // ===== Dashboard metrics =====
+    function refreshDashboard(){
+      const counts = state.tasks.reduce((m,t)=>{ m[t.status||'backlog']=(m[t.status||'backlog']||0)+1; return m; },{});
+      byId('statInProg').textContent=(counts.in_progress||0)+(counts.review||0);
+      byId('statRisks').textContent=loadLS(RISK_KEY,'[]').length||0;
+      const in7=new Date(); in7.setDate(in7.getDate()+7);
+      const dueSoon=state.tasks.filter(t=>t.due_date && new Date(t.due_date)<=in7 && new Date(t.due_date)>=new Date());
+      byId('statDue').textContent=dueSoon.length;
+      fillDashTagTable(_lastSubs||[]);
+      const ul=byId('dashUpcoming'); ul.innerHTML='';
+      state.tasks.filter(t=>t.due_date).sort((a,b)=>a.due_date.localeCompare(b.due_date)).slice(0,8).forEach(t=>{ const li=document.createElement('li'); li.textContent=`${t.due_date} — ${t.title}`; ul.appendChild(li); });
+    }
+    function fillDashTagTable(subs){
+      const body=byId('dashTagTable').querySelector('tbody');
+      const expected=state.members.map(m=>m.name);
+      const map={}; subs.forEach(s=>{ map[s.member_name||s.member_id||'Member']=s; });
+      const have=expected.filter(n=>map[n]);
+      byId('statTagups').textContent=`${have.length}/${expected.length}`;
+      body.innerHTML='';
+      expected.forEach(name=>{ const s=map[name]; const tr=document.createElement('tr'); if(s){ tr.innerHTML=`<td>${esc(name)}</td><td class='ok'>Received</td><td>${esc(s.yesterday||'-')}</td><td>${esc(s.today||'-')}</td><td>${esc(s.blockers||'-')}</td>`; } else { tr.innerHTML=`<td>${esc(name)}</td><td class='warn'>Missing</td><td class='note'>—</td><td class='note'>—</td><td class='note'>—</td>`; } body.appendChild(tr); });
+    }
+
+    // ===== Backlog / Kanban =====
+    const lanes=['backlog','in_progress','blocked','review','done'];
+    function renderKanban(){ const wrap=byId('kanban'); if(!wrap) return; wrap.innerHTML=''; lanes.forEach(s=>{ const lane=document.createElement('div'); lane.className='lane'; lane.setAttribute('data-status',s); const items=state.tasks.filter(t=>t.status===s); lane.innerHTML=`<div class='lane-header'><span>${s.replace('_',' ')}</span><span>${items.length}</span></div>`; items.forEach(t=>{ const card=document.createElement('div'); card.className='kcard'; card.setAttribute('draggable','true'); card.setAttribute('data-task-id',t.id); card.innerHTML=`<div style='font-weight:700;margin-bottom:4px'>${esc(t.title||'Untitled')}</div><div style='display:flex;gap:6px;flex-wrap:wrap'>${t.priority?`<span class='tag'>${esc(t.priority)}</span>`:''}${t.site?`<span class='tag'>${esc(t.site)}</span>`:''}${t.building?`<span class='tag'>BLDG ${esc(t.building)}</span>`:''}${t.due_date?`<span class='tag'>Due ${esc(t.due_date)}</span>`:''}</div>`; lane.appendChild(card); }); wrap.appendChild(lane); }); enableLaneDrops(); }
+
+    document.addEventListener('dragstart',(e)=>{ const el=e.target.closest&&e.target.closest('.kcard[data-task-id]'); if(el){ e.dataTransfer.setData('text/plain',el.getAttribute('data-task-id')); }});
+    function enableLaneDrops(){ document.querySelectorAll('.lane').forEach(l=>{ l.addEventListener('dragover',(e)=>{ if(e.dataTransfer.types.includes('text/plain')) e.preventDefault(); }); l.addEventListener('drop',(e)=>{ e.preventDefault(); const id=e.dataTransfer.getData('text/plain'); const t=state.tasks.find(x=>x.id===id); if(!t) return; t.status=l.getAttribute('data-status'); persist(); renderAll(); }); }); }
+
+    byId('searchInput').addEventListener('input', renderAll);
+    byId('sortSelect').addEventListener('change', renderAll);
+
+    // ===== Calendar =====
+    let calCursor=new Date();
+    function renderCalendar(){ const names=['January','February','March','April','May','June','July','August','September','October','November','December']; byId('calTitle').textContent=names[calCursor.getMonth()]+' '+calCursor.getFullYear(); const grid=byId('calGrid'); grid.innerHTML=''; const first=new Date(calCursor.getFullYear(),calCursor.getMonth(),1); const start=first.getDay(); const days=new Date(calCursor.getFullYear(),calCursor.getMonth()+1,0).getDate(); const total=Math.ceil((start+days)/7)*7; for(let i=0;i<total;i++){ const cell=document.createElement('div'); cell.className='cal-cell'; const day=i-start+1; if(day<1||day>days){ cell.style.opacity=.35; grid.appendChild(cell); continue;} const d=new Date(calCursor.getFullYear(),calCursor.getMonth(),day); const iso=fmt(d); cell.setAttribute('data-date',iso); cell.innerHTML=`<div style='color:#9ca3af;font-size:12px'>${day}</div>`; state.tasks.filter(t=>t.due_date===iso).forEach(t=>{ const chip=document.createElement('div'); chip.className='event'; chip.setAttribute('draggable','true'); chip.setAttribute('data-task-id',t.id); chip.innerHTML='<span class="dot"></span><span>'+esc(t.title||'Untitled')+'</span>'; cell.appendChild(chip); }); grid.appendChild(cell);} enableCalendarDrops(); }
+    function enableCalendarDrops(){ document.querySelectorAll('.cal-cell[data-date]').forEach(c=>{ c.addEventListener('dragover',(e)=>{ if(e.dataTransfer.types.includes('text/plain')) e.preventDefault(); }); c.addEventListener('drop',(e)=>{ e.preventDefault(); const id=e.dataTransfer.getData('text/plain'); const t=state.tasks.find(x=>x.id===id); if(!t) return; t.due_date=c.getAttribute('data-date'); persist(); renderAll(); }); }); }
+    byId('calPrev').addEventListener('click',()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+    byId('calNext').addEventListener('click',()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+    byId('calToday').addEventListener('click',()=>{ calCursor=new Date(); renderCalendar(); });
+
+    // ===== Tag‑Up flow =====
+    const tagDate=byId('tagDate'), modeSel=byId('modeSelect'), personWrap=byId('personWrap'), personSel=byId('personSelect');
+    const toInp=byId('toInput'), ccInp=byId('ccInput');
+    const yArea=byId('yesterdayArea'), tArea=byId('todayArea'), bArea=byId('blockersArea');
+    const preview=byId('emailPreview');
+    tagDate.value=todayISO;
+
+    function fillPerson(){ personSel.innerHTML=''; state.members.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; personSel.appendChild(o); }); }
+    fillPerson();
+
+    modeSel.addEventListener('change',()=>{ personWrap.style.display = modeSel.value==='person'?'':'none'; buildPreview(); });
+    personSel.addEventListener('change', buildPreview);
+    tagDate.addEventListener('change',()=>{ loadDraft(); buildPreview(); refreshDashboard(); });
+
+    function summarize(memberId, iso){ const y=new Date(iso); y.setDate(y.getDate()-1); const yISO=fmt(y); const tasks=state.tasks.filter(t=>!memberId || t.assignee_id===memberId); const yDone=tasks.filter(t=>t.status==='done'&&(t.due_date===yISO||!t.due_date)); const active=tasks.filter(t=>t.status==='in_progress'||t.status==='review'); const dueToday=tasks.filter(t=>t.due_date===iso); const blocked=tasks.filter(t=>t.status==='blocked'); const titles=a=>a.map(x=>x.title).slice(0,8).join('; '); const yText=[yDone.length?`Completed: ${titles(yDone)}`:'',active.length?`Progress: ${titles(active)}`:''].filter(Boolean).map(s=>'- '+s).join('\n'); const tText=[dueToday.length?`Due today (${dueToday.length}): ${titles(dueToday)}`:'',active.length?`Active: ${titles(active)}`:''].filter(Boolean).map(s=>'- '+s).join('\n'); const bText=blocked.length?`Blocked (${blocked.length}): ${titles(blocked)}`:''; return {yText,tText,bText}; }
+
+    byId('btnAutofill').addEventListener('click',()=>{ const iso=tagDate.value||todayISO; const mId=(modeSel.value==='person')?personSel.value:''; const s=summarize(mId,iso); yArea.value=s.yText; tArea.value=s.tText; bArea.value=s.bText; saveDraft(true); buildPreview(); });
+    byId('btnSaveDraft').addEventListener('click',()=>saveDraft(true));
+    byId('btnBuildEmail').addEventListener('click',buildPreview);
+    byId('btnDownloadTxt').addEventListener('click',()=>{ const full=buildEmail().full; const url=URL.createObjectURL(new Blob([full],{type:'text/plain'})); const a=document.createElement('a'); a.href=url; a.download=`Daily_TagUp_${tagDate.value||todayISO}.txt`; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); });
+
+    function buildEmail(){ const iso=tagDate.value||todayISO; const who=(modeSel.value==='person')?(state.members.find(m=>m.id===personSel.value)?.name||'Member'):'Team'; const subject=`Daily Scrum Tag-Up – ${who} – ${iso}`; const body=`Yesterday:\n${yArea.value.trim()||'-'}\n\nToday:\n${tArea.value.trim()||'-'}\n\nBlockers:\n${bArea.value.trim()||'-'}`; const to=toInp.value.trim(); const cc=ccInp.value.trim(); return {subject,to,cc,body,full:`SUBJECT: ${subject}\nTO: ${to}\nCC: ${cc}\n\nBODY:\n${body}`}; }
+    function buildPreview(){ preview.textContent=buildEmail().full; }
+
+    function saveDraft(show){ const map=loadLS(TAG_KEY,'{}')||{}; const key=tagDate.value||todayISO; map[key]={mode:modeSel.value,person_id:personSel.value||'',to:toInp.value.trim(),cc:ccInp.value.trim(),yesterday:yArea.value.trim(),today:tArea.value.trim(),blockers:bArea.value.trim()}; saveLS(TAG_KEY,map); if(show){ const s=document.createElement('span'); s.className='chip'; s.textContent='Saved'; preview.parentNode.insertBefore(s,preview); setTimeout(()=>s.remove(),1200);} }
+    function loadDraft(){ const map=loadLS(TAG_KEY,'{}')||{}; const d=map[tagDate.value||todayISO]; if(!d) return; modeSel.value=d.mode||'team'; personWrap.style.display=modeSel.value==='person'?'':'none'; if(d.person_id) personSel.value=d.person_id; toInp.value=d.to||''; ccInp.value=d.cc||''; yArea.value=d.yesterday||''; tArea.value=d.today||''; bArea.value=d.blockers||''; }
+
+    // ===== File System Access (SharePoint synced folder) =====
+    const fsa={supported:!!(window.showDirectoryPicker&&window.FileSystemHandle)};
+    let db; function dbOpen(){ return new Promise((res,rej)=>{ const req=indexedDB.open('DT_CLASSIC_DB',1); req.onupgradeneeded=(e)=>{ e.target.result.createObjectStore('kv'); }; req.onsuccess=(e)=>{ db=e.target.result; res(); }; req.onerror=()=>rej(req.error); }); }
+    async function dbPut(k,v){ await dbOpen(); await new Promise((res,rej)=>{ const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+    async function dbGet(k){ await dbOpen(); return await new Promise((res,rej)=>{ const tx=db.transaction('kv','readonly'); const r=tx.objectStore('kv').get(k); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); }); }
+    async function verifyPerm(handle){ const opts={mode:'readwrite'}; if((await handle.queryPermission(opts))==='granted') return; if((await handle.requestPermission(opts))!=='granted') throw new Error('Permission denied'); }
+    async function pickFolder(){ if(!fsa.supported){ alert('Your browser does not support the File System Access API. Use Team Dashboard → Load JSONs (fallback).'); return null; } const handle=await window.showDirectoryPicker({mode:'readwrite'}); await verifyPerm(handle); await dbPut('sharedDir',handle); setFolderChips(handle); return handle; }
+    async function getStoredHandle(){ try{ const h=await dbGet('sharedDir'); if(h){ await verifyPerm(h); return h; } }catch(_){ } return null; }
+    function setFolderChips(h){ const name=h?(h.name||'(chosen)'):'(not set)'; byId('folderChip').textContent='Folder: '+name; byId('teamFolderChip').textContent='Folder: '+name; byId('cfgFolderName').textContent=name; }
+    async function ensureDaySubfolder(rootHandle,iso){ const name=iso; try{ return await rootHandle.getDirectoryHandle(name,{create:true}); }catch(_){ return rootHandle; } }
+
+    byId('cfgPickFolder').addEventListener('click',pickFolder);
+    byId('cfgSave').addEventListener('click',()=>{ const obj={displayName:byId('cfgDisplayName').value.trim(),shortId:byId('cfgShortId').value.trim()}; saveLS(CFG_KEY,obj); const s=byId('cfgSaved'); s.style.display='inline-flex'; setTimeout(()=>s.style.display='none',1200); });
+    function hydrateConfigUI(){ const c=loadLS(CFG_KEY,'{}')||{}; byId('cfgDisplayName').value=c.displayName||''; byId('cfgShortId').value=c.shortId||''; getStoredHandle().then(setFolderChips); }
+
+    async function makePersonalFilename(iso){ const c=loadLS(CFG_KEY,'{}')||{}; const short=(c.shortId||'').trim(); const name=(c.displayName||'Member').replace(/\s+/g,''); return `tagup_${short||name}_${iso}.json`; }
+    async function buildSubmission(){ const c=loadLS(CFG_KEY,'{}')||{}; const iso=tagDate.value||todayISO; const who=(modeSel.value==='person')?(state.members.find(m=>m.id===personSel.value)?.name||c.displayName||'Member'):(c.displayName||'Team'); return {type:'daily_tagup',version:2,date:iso,mode:modeSel.value,member_id:modeSel.value==='person'?personSel.value:'',member_name:who,to:toInp.value.trim(),cc:ccInp.value.trim(),yesterday:yArea.value.trim(),today:tArea.value.trim(),blockers:bArea.value.trim()}; }
+
+    async function submitToFolder(){ try{ let h=await getStoredHandle(); if(!h) h=await pickFolder(); const iso=tagDate.value||todayISO; const sub=await ensureDaySubfolder(h,iso); await verifyPerm(sub); const data=await buildSubmission(); const fname=await makePersonalFilename(iso); const fh=await sub.getFileHandle(fname,{create:true}); const w=await fh.createWritable(); await w.write(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})); await w.close(); setFolderChips(h); const s=document.createElement('span'); s.className='chip'; s.textContent='Submitted ✓'; preview.parentNode.insertBefore(s,preview); setTimeout(()=>s.remove(),1200); refreshFolder(); refreshDashboard(); }catch(_){ alert('Submit failed. If on Firefox or a locked-down browser, use Download .txt or Team → Load JSONs (fallback).'); } }
+
+    byId('btnSubmitFolder').addEventListener('click',submitToFolder);
+    byId('btnEnsureDay').addEventListener('click',async()=>{ try{ let h=await getStoredHandle(); if(!h) h=await pickFolder(); const day=await ensureDaySubfolder(h,tagDate.value||todayISO); setFolderChips(h); const s=document.createElement('span'); s.className='chip'; s.textContent='Day folder ready: '+day.name; preview.parentNode.insertBefore(s,preview); setTimeout(()=>s.remove(),1500); }catch(_){ alert('Could not ensure subfolder. Pick a folder in Config or Team Dashboard.'); } });
+
+    // ===== Team Dashboard (read submissions) =====
+    const teamBody=byId('teamTable').querySelector('tbody');
+    function renderTeamTable(subs){ teamBody.innerHTML=''; const byMember={}; subs.forEach(s=>{ byMember[s.member_name||s.member_id||'Member']=s; }); const expected=state.members.map(m=>m.name); const seen=new Set(Object.keys(byMember)); expected.forEach(name=>{ const s=byMember[name]; const tr=document.createElement('tr'); if(s){ tr.innerHTML=`<td>${esc(name)}</td><td>${esc(s.yesterday||'-')}</td><td>${esc(s.today||'-')}</td><td>${esc(s.blockers||'-')}</td><td>${esc(s.date||'')}</td><td class='ok'>Received</td>`; } else { tr.innerHTML=`<td>${esc(name)}</td><td class='note'>—</td><td class='note'>—</td><td class='note'>—</td><td>${esc(tagDate.value||todayISO)}</td><td class='warn'>Missing</td>`; } teamBody.appendChild(tr); }); }
+
+    let _lastSubs=null;
+    async function refreshFolder(){ try{ let h=await getStoredHandle(); if(!h){ setFolderChips(null); return; } setFolderChips(h); const iso=tagDate.value||todayISO; const day=await ensureDaySubfolder(h,iso); const subs=[]; for await (const entry of day.values()){ if(entry.kind==='file' && /\.json$/i.test(entry.name)){ const file=await entry.getFile(); try{ const obj=JSON.parse(await file.text()); if(obj && obj.type==='daily_tagup' && obj.date===iso) subs.push(obj); }catch(_){ } } } _lastSubs=subs; renderTeamTable(subs); }catch(_){ renderTeamTable([]); } }
+
+    byId('btnRefreshFolder').addEventListener('click', refreshFolder);
+    byId('btnPickFolder').addEventListener('click', pickFolder);
+
+    byId('multiJson').addEventListener('change', async()=>{ const iso=tagDate.value||todayISO; const subs=[]; for(const f of byId('multiJson').files){ try{ const obj=JSON.parse(await f.text()); if(obj && obj.type==='daily_tagup' && obj.date===iso) subs.push(obj); }catch(_){ } } _lastSubs=subs; renderTeamTable(subs); byId('multiJson').value=''; });
+
+    // ===== Export/Import dataset (members + tasks only here) =====
+    function persist(){ saveLS(DS_KEY,state); }
+    byId('btnExport').addEventListener('click',()=>{ const blob=new Blob([JSON.stringify({members:state.members,tasks:state.tasks},null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='daily-tagup-data.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); });
+    byId('fileImport').addEventListener('change',()=>{ const f=byId('fileImport').files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.members) state.members=d.members; if(d.tasks) state.tasks=d.tasks; persist(); renderAll(); }catch(_){ } }; r.readAsText(f); byId('fileImport').value=''; });
+
+    // ===== Initial renders
+    function renderAll(){ renderKanban(); if(views.calendar.classList.contains('active')) renderCalendar(); refreshDashboard(); }
+    renderAll(); hydrateConfigUI();
+
+    // Ready badge
+    status.textContent='ready'; status.classList.add('ready');
+  }catch(err){ console.error(err); alert('Script init failed. If on Windows, Unblock the file (Properties → Unblock) or PowerShell:  Unblock-File -Path "./index.html"'); }
+});
+</script>
+</body>
+</html>
